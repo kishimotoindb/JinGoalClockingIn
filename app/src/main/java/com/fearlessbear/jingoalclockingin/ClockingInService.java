@@ -148,7 +148,6 @@ public class ClockingInService extends AccessibilityService {
         return source.findAccessibilityNodeInfosByViewId(id);
     }
 
-
     private static class Operation {
         String text;
         int action;
