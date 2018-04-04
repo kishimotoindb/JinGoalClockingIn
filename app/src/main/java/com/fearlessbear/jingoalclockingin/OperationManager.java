@@ -9,6 +9,8 @@ import java.util.Calendar;
 public class OperationManager {
 
     private boolean mOperate = false;
+    private int mIndex;
+
     private Calendar mCalendar;
 
     private OperationManager() {
@@ -29,6 +31,18 @@ public class OperationManager {
 
     public void setOperate(boolean b) {
         mOperate = b;
+    }
+
+    public int getIndex() {
+        return mIndex;
+    }
+
+    public void setIndex(int i) {
+        mIndex = i;
+    }
+
+    public void clear() {
+        mIndex = 0;
     }
 
     private boolean isInTime() {

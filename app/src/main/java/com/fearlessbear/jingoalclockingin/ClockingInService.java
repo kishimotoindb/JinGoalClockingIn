@@ -30,9 +30,6 @@ public class ClockingInService extends AccessibilityService {
 
 
     private OperationManager mOperationManager;
-    private LinkedList<Operation> mOperations;
-
-    private int mIndex = 0;
 
     @Override
     protected void onServiceConnected() {
@@ -45,7 +42,7 @@ public class ClockingInService extends AccessibilityService {
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
         boolean clockingIn = mOperationManager.clockingIn();
-        Log.d(TAG, "clockingIn is " + clockingIn);
+        Log.d(TAG, "是否打卡？doAction is " + clockingIn);
 
         if (clockingIn) {
             switch (event.getPackageName().toString()) {
@@ -62,54 +59,78 @@ public class ClockingInService extends AccessibilityService {
     }
 
     private void jinGoalGo(AccessibilityEvent event) {
-        Log.d(TAG, "enter method jinGoalGo() ");
-        Log.d(TAG, "event is " + event.toString());
-        Log.d(TAG, "class is " + event.getClassName());
+        Log.d(TAG, "-----------------------------开始处理今目标产生的辅助事件---------------------------------------------- ");
+        Log.d(TAG, "辅助事件信息： " + event.toString());
+        Log.d(TAG, "产生当前辅助事件的类文件信息： " + event.getClassName());
 
-        if (event.getAction() == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
+        if (mOperationManager.getIndex() == 0) {
+            //1.打开今目标首页，点击"应用"TAB
 
-            if (isTargetClass(event, "MainFrame") && mIndex == 0) {
-                //1.打开今目标首页，点击"应用"TAB
+            Log.d(TAG, "进入第一步，查找应用按钮");
 
-                Log.d(TAG, "jinGoalGo: enter index 0");
+            if (doAction("应用", true, AccessibilityNodeInfo.ACTION_CLICK, true)) {
+                mOperationManager.setIndex(mOperationManager.getIndex() + 1);
+            }
 
-                List<AccessibilityNodeInfo> nodes = getNodeInfosByText(event, "应用");
-                if (nodes.size() != 0) {
-                    AccessibilityNodeInfo node = nodes.get(0);
-                    node.performAction(AccessibilityNodeInfo.ACTION_CLICK);
-                    mIndex++;
-                    Log.d(TAG, "jinGoalGo: execute index 0");
-                }
+        } else if (mOperationManager.getIndex() == 1) {
+            //2.跳转至"应用"TAB后，点击考勤
 
-            } else if (isTargetClass(event, "MainFrame") && mIndex == 1) {
-                //2.跳转至"应用"TAB后，点击考勤
+            Log.d(TAG, "进入第二步，查找考勤按钮");
 
-                Log.d(TAG, "jinGoalGo: enter index 1");
+            if (doAction("考勤", true, AccessibilityNodeInfo.ACTION_CLICK, true)) {
+                mOperationManager.setIndex(mOperationManager.getIndex() + 1);
+            }
+        } else if (mOperationManager.getIndex() == 2) {
+            //3.点击签到
 
-                List<AccessibilityNodeInfo> nodes = getNodeInfosByText(event, "考勤");
-                if (nodes.size() != 0) {
-                    AccessibilityNodeInfo node = nodes.get(0);
-                    node.performAction(AccessibilityNodeInfo.ACTION_CLICK);
-                    mIndex++;
-                    Log.d(TAG, "jinGoalGo: execute index 1");
-                }
-            } else if (isTargetClass(event, "AttendanceMainPanelActivity") && mIndex == 2) {
-                //3.点击签到
+            Log.d(TAG, "进入第三步，查找签到按钮");
 
-                Log.d(TAG, "jinGoalGo: enter index 2");
-
-                List<AccessibilityNodeInfo> nodes = getNodeInfosByText(event, "签到");
-                if (nodes.size() != 0) {
-                    AccessibilityNodeInfo node = nodes.get(0);
-
-                    node.performAction(AccessibilityNodeInfo.ACTION_CLICK);
-                    mOperationManager.setOperate(false);
-                    mIndex = 0;
-                    Log.d(TAG, "jinGoalGo: execute index 2");
-                }
-
+            if (doAction("com.jingoal.mobile.android.jingoal:id/rl_atte_main_sign_vp", false, AccessibilityNodeInfo.ACTION_CLICK, false)) {
+                mOperationManager.setOperate(false);
+                mOperationManager.clear();
             }
         }
+
+        Log.d(TAG, "-----------------------------处理今目标产生的辅助事件结束---------------------------------------------- ");
+    }
+
+    private boolean doAction(String text, boolean byText, int action, boolean onParent) {
+        AccessibilityNodeInfo root = getRootInActiveWindow();
+
+        if (root != null) {
+
+            List<AccessibilityNodeInfo> nodes;
+            if (byText) {
+                nodes = root.findAccessibilityNodeInfosByText(text);
+            } else {
+                nodes = root.findAccessibilityNodeInfosByViewId(text);
+            }
+            Log.d(TAG, "找到了 " + text + " 节点，节点数量是 " + nodes.size() + "个");
+
+            if (nodes.size() != 0) {
+                AccessibilityNodeInfo node = nodes.get(0);
+                Log.d(TAG, "第一个节点包含的信息： " + node.toString());
+
+                if (onParent) {
+                    AccessibilityNodeInfo parent = node.getParent();
+                    if (parent == null) {
+                        return false;
+                    } else {
+                        parent.performAction(action);
+                    }
+                } else {
+                    node.performAction(action);
+                }
+                Log.d(TAG, "节点成功完成相应Action的操作");
+
+                for (AccessibilityNodeInfo nodeInfo : nodes) {
+                    nodeInfo.recycle();
+                }
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private boolean isTargetClass(AccessibilityEvent event, String target) {

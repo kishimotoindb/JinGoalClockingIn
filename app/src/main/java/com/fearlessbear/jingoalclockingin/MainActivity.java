@@ -22,7 +22,7 @@ import java.util.List;
  * 使用Service监测时间和地点，在时间符合并且地点符合的情况下，发送开启今目标的广播。广播接收者收到
  * 广播之后开启今目标，然后AccessibilityService完成打卡流程。
  */
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
     private static final String TAG = "ClockingInService";
 
@@ -37,9 +37,15 @@ public class MainActivity extends AppCompatActivity {
                 openJinGoal();
             }
         });
+        findViewById(R.id.btnRetry).setOnClickListener(this);
 
+        openJinGoal();
+    }
 
-        //开启今目标
+    @Override
+    protected void onRestart() {
+        super.onRestart();
+
         openJinGoal();
     }
 
@@ -49,13 +55,17 @@ public class MainActivity extends AppCompatActivity {
             Log.d(TAG, "openJinGoal: ");
             PackageManager pm = getPackageManager();
             Intent launchIntent = pm.getLaunchIntentForPackage("com.jingoal.mobile.android.jingoal");
+            launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             startActivity(launchIntent);
 
             //开始执行签到
-            OperationManager.getInstance().setOperate(true);
+            OperationManager manager = OperationManager.getInstance();
+            manager.clear();
+            manager.setOperate(true);
+
+            moveTaskToBack(false);
         } else {
             Toast.makeText(this, "今目标未安装，请安装应用后再使用胖熊爱心助手。胖熊退下了！", Toast.LENGTH_LONG).show();
-            System.exit(0);
         }
     }
 
@@ -68,5 +78,14 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         return false;
+    }
+
+    @Override
+    public void onClick(View v) {
+        switch (v.getId()) {
+            case R.id.btnRetry:
+                OperationManager.getInstance().clear();
+                break;
+        }
     }
 }
